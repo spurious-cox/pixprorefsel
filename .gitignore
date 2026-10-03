@@ -1,0 +1,18 @@
+venv/
+build/
+dist/
+__pycache__/
+*.pyc
+
+# local editing backups
+*.bak-*
+
+# built icon intermediates
+*.iconset/
+*-grid.png
+
+# macOS
+.DS_Store
+
+# signed output
+*.dmg
