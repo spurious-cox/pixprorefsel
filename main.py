@@ -33,6 +33,9 @@ from AppKit import (
     NSBackingStoreBuffered,
     NSButton,
     NSColor,
+    NSColorSpace,
+    NSColorPanel,
+    NSColorWell,
     NSEventTypeLeftMouseUp,
     NSFont,
     NSMakeRect,
@@ -55,7 +58,7 @@ from AppKit import (
 from Foundation import NSObject, NSUserDefaults
 from PyObjCTools import AppHelper
 
-VERSION = "1.4.1"
+VERSION = "1.5.3"
 BUNDLE_IDS = ("com.apple.pixelmator", "com.pixelmatorteam.pixelmator.x")
 LIMIT = 200          # slider range in pixels, each way
 MAX_REFINE = 1000      # largest grow accepted from the Change field
@@ -65,6 +68,7 @@ PANEL_W = 320
 UNITS = (("pixels", "px", None), ("centimeters", "cm", 2.54), ("inches", "in", 1.0))
 UNIT_KEY = "unit"
 PLACE_KEY = "place"
+COLOR_KEY = "shapeColor"          # "r,g,b" in 0..1, sRGB
 PLACES = ("Above current layer", "Below current layer")
 
 HELP = (
@@ -72,7 +76,7 @@ HELP = (
     "right grows it, live. The size is fixed when you let go and the slider "
     "returns to the center. Type in the Change field to refine the amount. "
     "New Layer turns the selection into a shape on its own layer, above or "
-    "below the current one."
+    "below the current one, in the color chosen between Help and Dismiss."
 )
 
 
@@ -82,6 +86,9 @@ LAYER_SCRIPT = '''tell application "%s" to tell the front document
     set c to index of current layer
     set s to convert selection into shape
     if (index of s) <= c then set c to c + 1
+    try
+        tell styles of s to set fill color to {%d, %d, %d}
+    end try
     move s to %s layer c
     try
         select s
@@ -146,6 +153,28 @@ def apply_steps(undo_count, new_px):
     ok, out = osa('tell application "%s" to tell the front document\n%s\nend tell'
                   % (path, "\n".join(lines)))
     return ok, "" if ok else out[:80]
+
+
+class ShapeColorWell(NSColorWell):
+    """A color well that raises the Colors panel even though this app is
+    never the active one (it is a nonactivating, LSUIElement panel app).
+
+    The stock well activates but the shared Colors panel then stays hidden
+    behind Pixelmator, so a click appears to do nothing.
+    """
+
+    def mouseDown_(self, event):
+        self.activate_(True)
+        panel = NSColorPanel.sharedColorPanel()
+        panel.setLevel_(NSStatusWindowLevel + 1)
+        panel.setHidesOnDeactivate_(False)
+        panel.setBecomesKeyOnlyIfNeeded_(True)
+        panel.setCollectionBehavior_(
+            NSWindowCollectionBehaviorCanJoinAllSpaces
+            | NSWindowCollectionBehaviorFullScreenAuxiliary
+            | NSWindowCollectionBehaviorStationary
+        )
+        panel.orderFrontRegardless()
 
 
 class Controller(NSObject):
@@ -244,6 +273,14 @@ class Controller(NSObject):
             v.setHidden_(True)
         self.help_text = self._label(HELP, size=11, color=NSColor.secondaryLabelColor())
         self.help_text.cell().setWraps_(True)
+        self.color_well = ShapeColorWell.alloc().initWithFrame_(NSMakeRect(0, 0, 10, 10))
+        self.color_well.setColor_(self._saved_color())
+        self.color_well.setTarget_(self)
+        self.color_well.setAction_("colorChanged:")
+        self.color_well.setToolTip_("Color of the shape that New Layer makes")
+        self._add(self.color_well)
+        self.color_label = self._label("Color", size=10, align=NSTextAlignmentCenter,
+                                       color=NSColor.secondaryLabelColor())
         self.help_button = self._button("Hide Help", "toggleHelp:")
         self.place_popup = NSPopUpButton.alloc().initWithFrame_pullsDown_(
             NSMakeRect(0, 0, 10, 10), False)
@@ -273,7 +310,7 @@ class Controller(NSObject):
         if self.help_visible:
             help_h = int(self.help_text.cell().cellSizeForBounds_(
                 NSMakeRect(0, 0, W, 1000)).height) + 4
-        H = 240 + (help_h + 12 if self.help_visible else 0)
+        H = 254 + (help_h + 12 if self.help_visible else 0)
         old = self.panel.frame()
         top = old.origin.y + old.size.height
         self.panel.setContentSize_((PANEL_W, H))
@@ -297,11 +334,13 @@ class Controller(NSObject):
         y -= 22
         self.status.setFrame_(NSMakeRect(M, y, W, 16))
         self.help_text.setHidden_(not self.help_visible)
-        self.help_text.setFrame_(NSMakeRect(M, 88, W, help_h))
-        self.place_popup.setFrame_(NSMakeRect(M, 50, 172, 26))
-        self.layer_button.setFrame_(NSMakeRect(PANEL_W - M - 104, 49, 104, 28))
-        self.help_button.setFrame_(NSMakeRect(M, 12, 100, 28))
-        self.dismiss_button.setFrame_(NSMakeRect(PANEL_W - M - 100, 12, 100, 28))
+        self.help_text.setFrame_(NSMakeRect(M, 102, W, help_h))
+        self.place_popup.setFrame_(NSMakeRect(M, 64, 172, 26))
+        self.layer_button.setFrame_(NSMakeRect(PANEL_W - M - 104, 63, 104, 28))
+        self.help_button.setFrame_(NSMakeRect(M, 12, 86, 28))
+        self.color_label.setFrame_(NSMakeRect((PANEL_W - 64) / 2, 42, 64, 13))
+        self.color_well.setFrame_(NSMakeRect((PANEL_W - 64) / 2, 12, 64, 28))
+        self.dismiss_button.setFrame_(NSMakeRect(PANEL_W - M - 86, 12, 86, 28))
         self.help_button.setTitle_("Hide Help" if self.help_visible else "Help")
 
     # ── Units ───────────────────────────────────────────────────────────
@@ -490,6 +529,28 @@ class Controller(NSObject):
         self._show_change(px if px else None)
 
     # ── App plumbing ────────────────────────────────────────────────────
+    @objc.python_method
+    def _saved_color(self):
+        text = NSUserDefaults.standardUserDefaults().stringForKey_(COLOR_KEY)
+        try:
+            r, g, b = [float(x) for x in str(text).split(",")]
+        except ValueError:
+            r, g, b = 1.0, 0.0, 0.0                      # bright red until chosen
+        return NSColor.colorWithSRGBRed_green_blue_alpha_(r, g, b, 1.0)
+
+    @objc.python_method
+    def _shape_rgb(self):
+        """The chosen color as Pixelmator's 0..65535 red, green, blue."""
+        c = self.color_well.color().colorUsingColorSpace_(NSColorSpace.sRGBColorSpace())
+        return tuple(int(round(v * 65535)) for v in
+                     (c.redComponent(), c.greenComponent(), c.blueComponent()))
+
+    def colorChanged_(self, sender):
+        c = sender.color().colorUsingColorSpace_(NSColorSpace.sRGBColorSpace())
+        NSUserDefaults.standardUserDefaults().setObject_forKey_(
+            "%f,%f,%f" % (c.redComponent(), c.greenComponent(), c.blueComponent()),
+            COLOR_KEY)
+
     def placeChanged_(self, _sender):
         NSUserDefaults.standardUserDefaults().setObject_forKey_(
             str(self.place_popup.titleOfSelectedItem()), PLACE_KEY)
@@ -518,7 +579,7 @@ class Controller(NSObject):
             if not path:
                 msg = "Pixelmator Pro is not running."
             else:
-                ok, out = osa(LAYER_SCRIPT % (path, place))
+                ok, out = osa(LAYER_SCRIPT % ((path,) + self._shape_rgb() + (place,)))
                 if ok:
                     msg = "New layer added."
                 elif "select" in out.lower() or "shape" in out.lower():

@@ -1,4 +1,4 @@
-# PixProRefsel 1.4.1
+# PixProRefsel 1.5.3
 
 Shrinks or grows the active selection in Pixelmator Pro with a slider, and
 shows the change live as you drag.
@@ -25,7 +25,8 @@ never takes focus from it, so you can leave it up while you work.
 **New Layer** turns the selection into a shape on its own layer, in one click
 and with no empty layer left behind. The menu beside it puts the new layer
 above or below the current one (your choice is remembered), and the new layer
-becomes the current layer. The Change field stays on screen showing the amount,
+becomes the current layer. The color well between **Help** and **Dismiss** sets
+the shape's fill color (bright red to start), and is remembered too. The Change field stays on screen showing the amount,
 but can no longer be edited, since the layer is now the latest step.
 
 The **Units** menu chooses how the amount is shown: pixels, centimeters or
