@@ -39,11 +39,14 @@ the window, quits the app.
 
 ## Emulating a shape stroke
 
-Pixelmator Pro shapes have a stroke, but a selection does not. PixProRefsel can
-stand in for one: select a layer's outline, grow the selection by the stroke
-width, click **New Layer** with *Below current layer*, and fill the new shape.
-The shape sits behind the original as an outline you can recolor, resize or
-restyle on its own, even around text or a pixel layer.
+PixProRefsel can stand in for a stroke around a layer's outline: select the
+outline, grow the selection by the stroke width, then click **New Layer** with
+*Below current layer*.
+
+The new shape is completely filled, not an outline. Enlarged and placed below
+the original layer, it shows around the edge and can look like a stroke. Unlike
+a real stroke, it is not attached to the shape: if you move, resize or edit the
+original layer, the new shape stays where it was.
 
 ## Notes
 
