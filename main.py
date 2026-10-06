@@ -58,7 +58,9 @@ from AppKit import (
 from Foundation import NSObject, NSUserDefaults
 from PyObjCTools import AppHelper
 
-VERSION = "1.5.3"
+import pixpro_updates
+
+VERSION = "1.6.0"
 BUNDLE_IDS = ("com.apple.pixelmator", "com.pixelmatorteam.pixelmator.x")
 LIMIT = 200          # slider range in pixels, each way
 MAX_REFINE = 1000      # largest grow accepted from the Change field
@@ -300,6 +302,11 @@ class Controller(NSObject):
         self._update_readout(0)
         panel.center()
         panel.orderFrontRegardless()
+        # The same automatic check every PixPro app makes when it opens: once a
+        # day at most, silent unless there is a newer release.
+        pixpro_updates.announce(
+            "pixprorefsel", VERSION,
+            lambda line: AppHelper.callAfter(self.status.setStringValue_, line))
 
     @objc.python_method
     def _layout(self):
