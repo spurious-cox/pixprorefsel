@@ -60,7 +60,7 @@ from PyObjCTools import AppHelper
 
 import pixpro_updates
 
-VERSION = "1.6.0"
+VERSION = "1.6.1"
 BUNDLE_IDS = ("com.apple.pixelmator", "com.pixelmatorteam.pixelmator.x")
 LIMIT = 200          # slider range in pixels, each way
 MAX_REFINE = 1000      # largest grow accepted from the Change field

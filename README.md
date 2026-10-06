@@ -1,7 +1,10 @@
-# PixProRefsel 1.6.0
+# PixProRefsel 1.6.1
 
 Shrinks or grows the active selection in Pixelmator Pro with a slider, and
 shows the change live as you drag.
+
+"Refsel" is short for Refine Selection: a condensed version of Pixelmator Pro's
+Refine Selection command, with the shrink and grow slider on its own.
 
 Requires macOS 13 or later on Apple silicon, and Pixelmator Pro. Both the 3.x
 build and the Creator Studio build work; the app drives whichever one is in

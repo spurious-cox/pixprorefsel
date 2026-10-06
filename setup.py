@@ -2,11 +2,12 @@
 
 from setuptools import setup
 
-VERSION = "1.6.0"
+VERSION = "1.6.1"
 
 setup(
     name="PixProRefsel",
     app=["main.py"],
+    data_files=["PixProRefsel-README.txt"],
     options={"py2app": {
         "argv_emulation": False,
         "iconfile": "PixProRefsel.icns",

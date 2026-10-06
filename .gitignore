@@ -16,3 +16,6 @@ __pycache__/
 
 # signed output
 *.dmg
+
+# generated from README.md by build.sh
+*-README.txt
