@@ -60,7 +60,7 @@ from PyObjCTools import AppHelper
 
 import pixpro_updates
 
-VERSION = "1.6.1"
+VERSION = "1.6.2"
 BUNDLE_IDS = ("com.apple.pixelmator", "com.pixelmatorteam.pixelmator.x")
 LIMIT = 200          # slider range in pixels, each way
 MAX_REFINE = 1000      # largest grow accepted from the Change field
@@ -98,12 +98,45 @@ LAYER_SCRIPT = '''tell application "%s" to tell the front document
 end tell'''
 
 
+_TOP_JS = (
+    'ObjC.import("CoreGraphics");ObjC.import("AppKit");'
+    'function top(o){var l=ObjC.deepUnwrap(ObjC.castRefToObject('
+    '$.CGWindowListCopyWindowInfo(o,0)));'
+    'for(var i=0;i<l.length;i++){var w=l[i];'
+    'if(w.kCGWindowOwnerName=="Pixelmator Pro"&&w.kCGWindowLayer==0'
+    '&&w.kCGWindowBounds.Height>100)return w.kCGWindowOwnerPID;}return 0;}'
+    'var p=top(17);if(!p)p=top(16);'
+    'var a=p?$.NSRunningApplication.runningApplicationWithProcessIdentifier(p):null;'
+    'a?(p+"\\t"+ObjC.unwrap(a.bundleIdentifier)+"\\t"+ObjC.unwrap(a.bundleURL.path)):""')
+
+
+def top_pixelmator():
+    """(pid, bundle id, bundle path) of the Pixelmator Pro build whose window
+    is topmost, or None. This is the build the person is looking at: the
+    window list is ordered front to back, so it stays right when this app was
+    started from Stache, Flache or the Dock and is not itself frontmost.
+    Visible windows are tried first, then windows on other Spaces. Needs no
+    Screen Recording permission (owner, pid and size only)."""
+    try:
+        out = subprocess.run(["/usr/bin/osascript", "-l", "JavaScript",
+                              "-e", _TOP_JS], capture_output=True,
+                             text=True, timeout=8).stdout.strip()
+    except Exception:
+        return None
+    parts = out.split("\t")
+    return (int(parts[0]), parts[1], parts[2]) if len(parts) == 3 else None
+
+
+
 def target():
     """Bundle path of the Pixelmator build to drive ("" if none running).
 
     A path rather than a bundle id: copies of one build share an id and
-    `tell application id` would launch the wrong one. Frontmost build wins.
+    `tell application id` would launch the wrong one. The build with the topmost window wins, then the active one.
     """
+    top = top_pixelmator()
+    if top and top[1] in BUNDLE_IDS:
+        return top[2]
     running = []
     for app in NSWorkspace.sharedWorkspace().runningApplications():
         if app.bundleIdentifier() in BUNDLE_IDS and app.bundleURL() is not None:

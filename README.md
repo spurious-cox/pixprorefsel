@@ -1,4 +1,4 @@
-# PixProRefsel 1.6.1
+# PixProRefsel 1.6.2
 
 Shrinks or grows the active selection in Pixelmator Pro with a slider, and
 shows the change live as you drag.
