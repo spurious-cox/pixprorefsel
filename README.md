@@ -72,3 +72,7 @@ It only ever reports: nothing is downloaded and nothing replaces itself.
 
 Please open an issue at
 https://github.com/spurious-cox/pixprorefsel/issues
+
+## Trademarks
+
+Pixelmator and Pixelmator Pro are trademarks of the Pixelmator Team Ltd. PixPro apps are independent and are not affiliated with, endorsed by or sponsored by Pixelmator or Apple.
